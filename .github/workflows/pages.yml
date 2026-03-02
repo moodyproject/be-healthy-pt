@@ -1,4 +1,4 @@
-name: Deploy to Pages
+name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
@@ -20,6 +20,6 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: '.'
       - id: deployment
         uses: actions/deploy-pages@v4
