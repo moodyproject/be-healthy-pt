@@ -340,4 +340,251 @@
     <!-- End of bodyEnd -->
 
 
-<div id="__framer-editorbar-container" dir="ltr" style="right: 10px; top: calc(-15px + 50vh); transform: translate(0px, 0px); transition: transform 100ms cubic-bezier(0.2, 0, 0, 1); cursor: pointer;"><span aria-label="Edit Framer Content" id="__framer-editorbar-label" style="right: 40px;">Edit Content</span><button type="button" aria-labelledby="__framer-editorbar-label" id="__framer-editorbar-button"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"><path d="M8.75 2.25a1.77 1.77 0 0 1 2.5 0h0c.69.69.69 1.81 0 2.5l-7 7h-2.5v-2.5Z" fill="transparent" stroke-width="1.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8 11.75h3.75" fill="transparent" stroke-width="1.5" stroke="currentColor" stroke-linecap="round"></path></svg></button></div><iframe id="__framer-editorbar" src="https://framer.com/edit?framerSiteId=b2da46cded7a6023d6ed9ea4ac832f51c15e5d9529753e391469409de4978d57&amp;source=minimal-need-064391.framer.app&amp;features=%7B%22editorBarDisableFrameAncestorsSecurity%22%3Afalse%2C%22onPageLocalizationSupport%22%3Atrue%2C%22onPageMoveTool%22%3Atrue%7D&amp;loadStart=1772417309590&amp;forceShow=true" aria-hidden="true" allow="autoplay" tabindex="-1" class="status_visually_hidden"></iframe></body></html>
+<div id="__framer-editorbar-container" dir="ltr" style="right: 10px; top: calc(-15px + 50vh); transform: translate(0px, 0px); transition: transform 100ms cubic-bezier(0.2, 0, 0, 1); cursor: pointer;"><span aria-label="Edit Framer Content" id="__framer-editorbar-label" style="right: 40px;">Edit Content</span><button type="button" aria-labelledby="__framer-editorbar-label" id="__framer-editorbar-button"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"><path d="M8.75 2.25a1.77 1.77 0 0 1 2.5 0h0c.69.69.69 1.81 0 2.5l-7 7h-2.5v-2.5Z" fill="transparent" stroke-width="1.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8 11.75h3.75" fill="transparent" stroke-width="1.5" stroke="currentColor" stroke-linecap="round"></path></svg></button></div><iframe id="__framer-editorbar" src="https://framer.com/edit?framerSiteId=b2da46cded7a6023d6ed9ea4ac832f51c15e5d9529753e391469409de4978d57&amp;source=minimal-need-064391.framer.app&amp;features=%7B%22editorBarDisableFrameAncestorsSecurity%22%3Afalse%2C%22onPageLocalizationSupport%22%3Atrue%2C%22onPageMoveTool%22%3Atrue%7D&amp;loadStart=1772417309590&amp;forceShow=true" aria-hidden="true" allow="autoplay" tabindex="-1" class="status_visually_hidden"></iframe><script>
+(function(){
+  "use strict";
+
+  /* ============================================
+     1. SLIDESHOW / CAROUSEL ARROWS
+     ============================================ */
+  document.querySelectorAll('fieldset.framer--slideshow-controls').forEach(function(fieldset) {
+    var container = fieldset.parentElement;
+    if (!container) return;
+    var ul = container.querySelector('ul');
+    if (!ul) return;
+    
+    var slides = ul.querySelectorAll(':scope > li');
+    if (slides.length === 0) return;
+    
+    var currentIndex = 0;
+    var isVertical = ul.style.flexDirection === 'column';
+    
+    // Determine initial index from transform
+    var tx = ul.style.transform;
+    if (tx) {
+      var m = tx.match(/translate[XY]\((-?[\d.]+)px\)/);
+      if (m) {
+        var offset = Math.abs(parseFloat(m[1]));
+        if (offset > 10) {
+          // Calculate which slide we're on
+          var slideSize = isVertical ? slides[0].offsetHeight : slides[0].offsetWidth;
+          var gap = parseFloat(ul.style.gap) || 0;
+          if (slideSize > 0) {
+            currentIndex = Math.round(offset / (slideSize + gap));
+          }
+        }
+      }
+    }
+    
+    function goTo(idx) {
+      if (idx < 0) idx = slides.length - 1;
+      if (idx >= slides.length) idx = 0;
+      currentIndex = idx;
+      
+      var slideSize, gap = parseFloat(ul.style.gap) || 0;
+      if (isVertical) {
+        slideSize = slides[0].offsetHeight;
+        ul.style.transition = 'transform 0.4s ease';
+        ul.style.transform = 'translateY(-' + (idx * (slideSize + gap)) + 'px)';
+      } else {
+        slideSize = slides[0].offsetWidth;
+        ul.style.transition = 'transform 0.4s ease';
+        ul.style.transform = 'translateX(-' + (idx * (slideSize + gap)) + 'px)';
+      }
+    }
+    
+    // Find arrow buttons - they're img elements inside the fieldset
+    var backArrow = fieldset.querySelector('img[alt="Back Arrow"]');
+    var nextArrow = fieldset.querySelector('img[alt="Next Arrow"]');
+    
+    // Walk up to find clickable parent
+    function makeClickable(el) {
+      if (!el) return null;
+      var target = el.closest('button') || el.closest('[data-highlight]') || el.parentElement;
+      return target || el;
+    }
+    
+    var backBtn = makeClickable(backArrow);
+    var nextBtn = makeClickable(nextArrow);
+    
+    if (backBtn) {
+      backBtn.style.cursor = 'pointer';
+      backBtn.style.pointerEvents = 'auto';
+      backBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        goTo(currentIndex - 1);
+      });
+    }
+    if (nextBtn) {
+      nextBtn.style.cursor = 'pointer';
+      nextBtn.style.pointerEvents = 'auto';
+      nextBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        goTo(currentIndex + 1);
+      });
+    }
+    
+    // Make buttons in fieldset clickable
+    fieldset.querySelectorAll('button').forEach(function(btn) {
+      btn.style.pointerEvents = 'auto';
+    });
+  });
+
+  /* ============================================
+     2. FAQ ACCORDION (toggle plus icon rotation)
+     ============================================ */
+  document.querySelectorAll('[data-framer-name="Question"]').forEach(function(question) {
+    question.style.cursor = 'pointer';
+    var plusIcon = question.querySelector('[data-framer-name="Plus"]');
+    var isOpen = false;
+    
+    // The answer content doesn't exist in static HTML (Framer "Closed" variant)
+    // We just animate the plus icon as visual feedback
+    question.addEventListener('click', function() {
+      isOpen = !isOpen;
+      if (plusIcon) {
+        plusIcon.style.transition = 'transform 0.3s ease';
+        plusIcon.style.transform = isOpen ? 'rotate(45deg)' : 'rotate(0deg)';
+      }
+    });
+  });
+
+  /* ============================================
+     3. BEFORE/AFTER TAB SWITCHING  
+     ============================================ */
+  // The Before/After tabs are inside slideshow slides
+  // Each slide card has Before/After labels and before/after images
+  // The slideshow handles navigation between different people
+  // The Before/After within each card shows different states
+  
+  // Find pairs of Before/After tab containers
+  var beforeTabs = document.querySelectorAll('.framer-1qwgvjr[data-framer-name="Before"]');
+  var afterTabs = document.querySelectorAll('.framer-1d76l3b[data-framer-name="After"]');
+  
+  // They come in pairs - wire each pair
+  for (var t = 0; t < beforeTabs.length && t < afterTabs.length; t++) {
+    (function(beforeTab, afterTab) {
+      // Find common parent
+      var parent = beforeTab.closest('.framer-7vg1cv');
+      if (!parent) return;
+      
+      // Find the slide/card this belongs to
+      var card = parent.closest('li') || parent.closest('section') || parent.closest('[data-framer-name]');
+      if (!card) return;
+      
+      // Find the before and after image containers in this card
+      // Before image: labeled "Before" with h4
+      // After image: labeled "after" with h4 (lowercase in data-framer-name)
+      var beforeLabel = card.querySelector('[data-framer-name="Before"] h4, .framer-1fce034[data-framer-name="Before"]');
+      var afterLabel = card.querySelector('[data-framer-name="after"], .framer-gws92j[data-framer-name="after"]');
+      
+      // Find before/after image sections
+      var images = card.querySelectorAll('.framer-18f7tz8, .framer-vlnwvy');
+      var beforeImg = images[0];
+      var afterImg = images[1];
+      
+      var activeColor = 'rgb(239, 217, 21)';
+      var inactiveColor = 'rgb(189, 189, 189)';
+      
+      function showBefore() {
+        if (beforeImg) beforeImg.style.display = '';
+        if (afterImg) afterImg.style.display = 'none';
+        beforeTab.querySelector('p').style.setProperty('--framer-text-color', activeColor);
+        afterTab.querySelector('p').style.setProperty('--framer-text-color', inactiveColor);
+      }
+      
+      function showAfter() {
+        if (beforeImg) beforeImg.style.display = 'none';
+        if (afterImg) afterImg.style.display = '';
+        afterTab.querySelector('p').style.setProperty('--framer-text-color', activeColor);
+        beforeTab.querySelector('p').style.setProperty('--framer-text-color', inactiveColor);
+      }
+      
+      beforeTab.style.cursor = 'pointer';
+      afterTab.style.cursor = 'pointer';
+      beforeTab.parentElement.style.cursor = 'pointer';
+      afterTab.parentElement.style.cursor = 'pointer';
+      
+      beforeTab.parentElement.addEventListener('click', showBefore);
+      afterTab.parentElement.addEventListener('click', showAfter);
+    })(beforeTabs[t], afterTabs[t]);
+  }
+
+  /* ============================================
+     4. SERVICES NAV DROPDOWN
+     ============================================ */
+  var servicesBtn = document.querySelector('[data-framer-name="Close"] [data-framer-name="Services"]');
+  if (servicesBtn) {
+    var servicesContainer = servicesBtn.closest('[data-framer-name="Close"]');
+    
+    // Create dropdown
+    var dropdown = document.createElement('div');
+    dropdown.style.cssText = 'position:absolute;top:100%;left:0;background:rgb(255,255,255);border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:8px 0;display:none;min-width:180px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.1);';
+    
+    var services = [
+      {name: 'Gym', href: './gym'},
+      {name: 'Weight Loss', href: './weight-loss'},
+      {name: 'Kickfit', href: './kickfit'},
+      {name: 'Group X', href: './group-x'},
+      {name: 'Swimming', href: './swimming'}
+    ];
+    
+    services.forEach(function(s) {
+      var a = document.createElement('a');
+      a.href = s.href;
+      a.textContent = s.name;
+      a.style.cssText = 'display:block;padding:8px 20px;color:rgb(26,26,26);text-decoration:none;font-family:"Plus Jakarta Sans",sans-serif;font-size:14px;letter-spacing:0.5px;';
+      a.addEventListener('mouseenter', function(){ a.style.backgroundColor = 'rgba(239,217,21,0.1)'; });
+      a.addEventListener('mouseleave', function(){ a.style.backgroundColor = ''; });
+      dropdown.appendChild(a);
+    });
+    
+    servicesContainer.style.position = 'relative';
+    servicesContainer.appendChild(dropdown);
+    
+    var dropdownOpen = false;
+    servicesContainer.style.cursor = 'pointer';
+    
+    servicesContainer.addEventListener('click', function(e) {
+      if (e.target.closest('a[href]') && e.target.closest('a[href]').parentElement === dropdown) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dropdownOpen = !dropdownOpen;
+      dropdown.style.display = dropdownOpen ? 'block' : 'none';
+      // Rotate chevron
+      var icon = servicesContainer.querySelector('.framer-nbtxc6-container');
+      if (icon) {
+        icon.style.transition = 'transform 0.3s ease';
+        icon.style.transform = dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+      }
+    });
+    
+    document.addEventListener('click', function(e) {
+      if (!servicesContainer.contains(e.target)) {
+        dropdownOpen = false;
+        dropdown.style.display = 'none';
+        var icon = servicesContainer.querySelector('.framer-nbtxc6-container');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+      }
+    });
+  }
+
+  /* ============================================
+     5. FIX BROKEN IMAGES (&amp; in srcset/src)
+     ============================================ */
+  document.querySelectorAll('img[srcset]').forEach(function(img) {
+    if (img.srcset && img.srcset.indexOf('&amp;') !== -1) {
+      img.srcset = img.srcset.replace(/&amp;/g, '&');
+    }
+  });
+  document.querySelectorAll('img[src]').forEach(function(img) {
+    if (img.src && img.src.indexOf('&amp;') !== -1) {
+      img.src = img.src.replace(/&amp;/g, '&');
+    }
+  });
+
+})();
+</script>
+</body></html>
