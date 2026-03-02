@@ -5,16 +5,47 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. SLIDESHOW CAROUSELS
   // =====================
   // Structure: section > [container div > ul.track > li slides] + [.framer--slideshow-controls]
-  // Framer duplicates slides with aria-hidden="true" for infinite scroll illusion.
-  // We use only the real (non-hidden) slides and translateX the track.
+  // Framer froze buttons as display:none and controls as pointer-events:none.
+  // We fix that, hide duplicate slides, and wire up prev/next + dots.
 
   document.querySelectorAll('.framer--slideshow-controls').forEach(controls => {
     const section = controls.parentElement;
-    const container = section.children[0]; // first child is the slide container
+    const container = section.children[0];
     if (!container || container === controls) return;
 
     const track = container.querySelector('ul');
     if (!track) return;
+
+    // Fix controls visibility — framer sets pointer-events:none on the overlay
+    controls.style.pointerEvents = 'none'; // keep overlay non-blocking
+    // But make the button container and buttons clickable
+    Array.from(controls.children).forEach(child => {
+      child.style.pointerEvents = 'auto';
+    });
+
+    // Fix button visibility — framer hides prev/next with display:none
+    const prevBtn = controls.querySelector('[aria-label="Previous"]');
+    const nextBtn = controls.querySelector('[aria-label="Next"]');
+    if (prevBtn) {
+      prevBtn.style.display = 'block';
+      prevBtn.style.pointerEvents = 'auto';
+      prevBtn.style.cursor = 'pointer';
+    }
+    if (nextBtn) {
+      nextBtn.style.display = 'block';
+      nextBtn.style.pointerEvents = 'auto';
+      nextBtn.style.cursor = 'pointer';
+    }
+
+    // Show buttons on hover, hide when not
+    section.addEventListener('mouseenter', () => {
+      if (prevBtn) prevBtn.style.opacity = '1';
+      if (nextBtn) nextBtn.style.opacity = '1';
+    });
+    section.addEventListener('mouseleave', () => {
+      if (prevBtn) prevBtn.style.opacity = '0.5';
+      if (nextBtn) nextBtn.style.opacity = '0.5';
+    });
 
     // Get real slides (not aria-hidden duplicates)
     const allLis = Array.from(track.querySelectorAll(':scope > li'));
@@ -28,16 +59,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Compute gap
-    const gap = parseInt(track.style.gap) || 0;
+    // Ensure track doesn't clip and uses flex properly
+    track.style.overflow = 'visible';
+    track.style.touchAction = 'pan-y';
+    track.style.cursor = 'grab';
 
-    // Each slide's inner div is the visible card — measure its width
+    const gap = parseInt(track.style.gap) || 0;
     let currentIndex = 0;
 
     function getSlideWidth() {
-      const firstSlideInner = realSlides[0].querySelector(':scope > div');
-      if (!firstSlideInner) return section.offsetWidth;
-      return firstSlideInner.offsetWidth;
+      // Slides use display:contents so measure their inner div
+      const inner = realSlides[0].querySelector(':scope > div');
+      if (inner) return inner.offsetWidth;
+      // Fallback: container width
+      return container.offsetWidth;
     }
 
     function goTo(idx) {
@@ -50,13 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
       updateDots();
     }
 
-    // Wire up prev/next buttons
-    const prevBtn = controls.querySelector('[aria-label="Previous"]');
-    const nextBtn = controls.querySelector('[aria-label="Next"]');
-    if (prevBtn) prevBtn.addEventListener('click', () => goTo(currentIndex - 1));
-    if (nextBtn) nextBtn.addEventListener('click', () => goTo(currentIndex + 1));
+    if (prevBtn) prevBtn.addEventListener('click', (e) => { e.stopPropagation(); goTo(currentIndex - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', (e) => { e.stopPropagation(); goTo(currentIndex + 1); });
 
-    // Wire up dot indicators
+    // Dot indicators
     const dots = controls.querySelectorAll('[aria-label^="Scroll to page"]');
     function updateDots() {
       dots.forEach((dot, i) => {
@@ -64,10 +96,25 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
     dots.forEach((dot, i) => {
+      dot.style.pointerEvents = 'auto';
+      dot.style.cursor = 'pointer';
       dot.addEventListener('click', () => goTo(i));
     });
 
-    // Initialize: go to slide 0
+    // Touch/swipe support
+    let startX = 0;
+    let isDragging = false;
+    track.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; isDragging = true; });
+    track.addEventListener('touchend', (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      const diff = e.changedTouches[0].clientX - startX;
+      if (Math.abs(diff) > 50) {
+        goTo(currentIndex + (diff < 0 ? 1 : -1));
+      }
+    });
+
+    // Initialize at slide 0
     goTo(0);
   });
 
@@ -79,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const question = item.querySelector('[data-framer-name="Question"]');
     if (!question) return;
 
-    // Answer is the element after the question row inside this item
     const allChildren = Array.from(item.children);
     const qIdx = allChildren.indexOf(question);
     const answer = allChildren[qIdx + 1];
@@ -121,9 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // =====================
   // 3. TRAINER CARD OVERLAYS
   // =====================
-  // Each trainer card has data-framer-name="Overlay" inside it, initially hidden
   document.querySelectorAll('[data-framer-name="Overlay"]').forEach(overlay => {
-    // Make sure overlay is hidden by default
     overlay.style.display = 'none';
     overlay.style.position = 'absolute';
     overlay.style.inset = '0';
@@ -136,20 +180,13 @@ document.addEventListener('DOMContentLoaded', () => {
     card.style.position = 'relative';
 
     card.addEventListener('click', (e) => {
-      // If clicking the X button, close
       if (e.target.closest('[data-framer-name="X"]')) {
         overlay.style.display = 'none';
         return;
       }
-      // Toggle overlay
-      if (overlay.style.display === 'none') {
-        overlay.style.display = 'block';
-      } else {
-        overlay.style.display = 'none';
-      }
+      overlay.style.display = overlay.style.display === 'none' ? 'block' : 'none';
     });
 
-    // Close button
     const closeBtn = overlay.querySelector('[data-framer-name="X"]');
     if (closeBtn) {
       closeBtn.style.cursor = 'pointer';
@@ -164,15 +201,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // =====================
   // 4. HAMBURGER MENU (MOBILE)
   // =====================
-  const menuBtns = document.querySelectorAll('[data-framer-name="Menu"]');
-  menuBtns.forEach(btn => {
+  document.querySelectorAll('[data-framer-name="Menu"]').forEach(btn => {
     btn.style.cursor = 'pointer';
     btn.addEventListener('click', () => {
-      // Find the nav/menu container - typically a sibling or parent's child
       const header = btn.closest('header') || btn.closest('nav') || btn.parentElement?.parentElement;
       if (!header) return;
-
-      // Look for a nav element or a div with links that should toggle
       const navLinks = header.querySelector('nav') || header.querySelector('[data-framer-name="Services"]')?.parentElement;
       if (navLinks) {
         const isHidden = navLinks.style.display === 'none' || getComputedStyle(navLinks).display === 'none';
