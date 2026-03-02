@@ -1,125 +1,198 @@
-// Be Healthy PT - Interactivity (FAQ, Trainer Popups, Hamburger Menu)
+/* Be Healthy PT - Interactivity */
 document.addEventListener('DOMContentLoaded', () => {
 
-  // === FAQ ACCORDION ===
-  // Each FAQ item has data-framer-name="Closed" with a "Question" row and hidden answer
+  // =====================
+  // 1. SLIDESHOW CAROUSELS
+  // =====================
+  // Structure: section > [container div > ul.track > li slides] + [.framer--slideshow-controls]
+  // Framer duplicates slides with aria-hidden="true" for infinite scroll illusion.
+  // We use only the real (non-hidden) slides and translateX the track.
+
+  document.querySelectorAll('.framer--slideshow-controls').forEach(controls => {
+    const section = controls.parentElement;
+    const container = section.children[0]; // first child is the slide container
+    if (!container || container === controls) return;
+
+    const track = container.querySelector('ul');
+    if (!track) return;
+
+    // Get real slides (not aria-hidden duplicates)
+    const allLis = Array.from(track.querySelectorAll(':scope > li'));
+    const realSlides = allLis.filter(li => li.getAttribute('aria-hidden') !== 'true');
+    if (realSlides.length < 2) return;
+
+    // Hide duplicate slides
+    allLis.forEach(li => {
+      if (li.getAttribute('aria-hidden') === 'true') {
+        li.style.display = 'none';
+      }
+    });
+
+    // Compute gap
+    const gap = parseInt(track.style.gap) || 0;
+
+    // Each slide's inner div is the visible card — measure its width
+    let currentIndex = 0;
+
+    function getSlideWidth() {
+      const firstSlideInner = realSlides[0].querySelector(':scope > div');
+      if (!firstSlideInner) return section.offsetWidth;
+      return firstSlideInner.offsetWidth;
+    }
+
+    function goTo(idx) {
+      if (idx < 0) idx = realSlides.length - 1;
+      if (idx >= realSlides.length) idx = 0;
+      currentIndex = idx;
+      const slideW = getSlideWidth();
+      track.style.transition = 'transform 0.4s ease';
+      track.style.transform = `translateX(${-currentIndex * (slideW + gap)}px)`;
+      updateDots();
+    }
+
+    // Wire up prev/next buttons
+    const prevBtn = controls.querySelector('[aria-label="Previous"]');
+    const nextBtn = controls.querySelector('[aria-label="Next"]');
+    if (prevBtn) prevBtn.addEventListener('click', () => goTo(currentIndex - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => goTo(currentIndex + 1));
+
+    // Wire up dot indicators
+    const dots = controls.querySelectorAll('[aria-label^="Scroll to page"]');
+    function updateDots() {
+      dots.forEach((dot, i) => {
+        dot.style.opacity = i === currentIndex ? '1' : '0.4';
+      });
+    }
+    dots.forEach((dot, i) => {
+      dot.addEventListener('click', () => goTo(i));
+    });
+
+    // Initialize: go to slide 0
+    goTo(0);
+  });
+
+
+  // =====================
+  // 2. FAQ ACCORDION
+  // =====================
   document.querySelectorAll('[data-framer-name="Closed"]').forEach(item => {
     const question = item.querySelector('[data-framer-name="Question"]');
     if (!question) return;
-    
-    // Find the answer - it's a sibling or child that's hidden
-    // In framer, the answer panel is usually the next element after the question row
+
+    // Answer is the element after the question row inside this item
     const allChildren = Array.from(item.children);
-    const questionIdx = allChildren.indexOf(question);
-    const answer = allChildren[questionIdx + 1]; // element after question
-    
+    const qIdx = allChildren.indexOf(question);
+    const answer = allChildren[qIdx + 1];
+
     if (answer) {
       answer.style.display = 'none';
-      answer.style.overflow = 'hidden';
-      answer.style.transition = 'max-height 0.3s ease';
+      answer.style.transition = 'opacity 0.3s ease';
     }
-    
-    // Plus icon rotation
+
     const plus = item.querySelector('[data-framer-name="Plus"]');
     if (plus) {
       plus.style.transition = 'transform 0.3s ease';
       plus.style.cursor = 'pointer';
     }
-    
+
     question.style.cursor = 'pointer';
     question.addEventListener('click', () => {
       const isOpen = answer && answer.style.display !== 'none';
-      
-      // Close all others first
+
+      // Close all others
       document.querySelectorAll('[data-framer-name="Closed"]').forEach(other => {
         if (other === item) return;
-        const otherChildren = Array.from(other.children);
-        const otherQ = other.querySelector('[data-framer-name="Question"]');
-        if (!otherQ) return;
-        const otherIdx = otherChildren.indexOf(otherQ);
-        const otherA = otherChildren[otherIdx + 1];
-        if (otherA) otherA.style.display = 'none';
-        const otherPlus = other.querySelector('[data-framer-name="Plus"]');
-        if (otherPlus) otherPlus.style.transform = 'none';
+        const oChildren = Array.from(other.children);
+        const oQ = other.querySelector('[data-framer-name="Question"]');
+        if (!oQ) return;
+        const oIdx = oChildren.indexOf(oQ);
+        const oA = oChildren[oIdx + 1];
+        if (oA) oA.style.display = 'none';
+        const oPlus = other.querySelector('[data-framer-name="Plus"]');
+        if (oPlus) oPlus.style.transform = 'none';
       });
-      
-      if (answer) {
-        answer.style.display = isOpen ? 'none' : 'block';
-      }
-      if (plus) {
-        plus.style.transform = isOpen ? 'none' : 'rotate(45deg)';
-      }
+
+      if (answer) answer.style.display = isOpen ? 'none' : 'block';
+      if (plus) plus.style.transform = isOpen ? 'none' : 'rotate(45deg)';
     });
   });
 
-  // === TRAINER CARD HOVER - Show name/specialty ===
-  // Trainer cards have data-framer-cursor and contain elements with opacity:0 and translateX(-280px)
-  document.querySelectorAll('[data-framer-cursor]').forEach(card => {
-    const hiddenName = card.querySelector('[data-framer-name="David smith"], [style*="translateX(-280px)"]');
-    const hiddenSpec = card.querySelector('[data-framer-name="Gym Coach"]');
-    
-    if (hiddenName) {
-      card.addEventListener('mouseenter', () => {
-        hiddenName.style.opacity = '1';
-        hiddenName.style.transform = 'none';
-        hiddenName.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-      });
-      card.addEventListener('mouseleave', () => {
-        hiddenName.style.opacity = '0';
-        hiddenName.style.transform = 'translateX(-280px)';
+
+  // =====================
+  // 3. TRAINER CARD OVERLAYS
+  // =====================
+  // Each trainer card has data-framer-name="Overlay" inside it, initially hidden
+  document.querySelectorAll('[data-framer-name="Overlay"]').forEach(overlay => {
+    // Make sure overlay is hidden by default
+    overlay.style.display = 'none';
+    overlay.style.position = 'absolute';
+    overlay.style.inset = '0';
+    overlay.style.zIndex = '10';
+    overlay.style.transition = 'opacity 0.3s ease';
+
+    const card = overlay.parentElement;
+    if (!card) return;
+    card.style.cursor = 'pointer';
+    card.style.position = 'relative';
+
+    card.addEventListener('click', (e) => {
+      // If clicking the X button, close
+      if (e.target.closest('[data-framer-name="X"]')) {
+        overlay.style.display = 'none';
+        return;
+      }
+      // Toggle overlay
+      if (overlay.style.display === 'none') {
+        overlay.style.display = 'block';
+      } else {
+        overlay.style.display = 'none';
+      }
+    });
+
+    // Close button
+    const closeBtn = overlay.querySelector('[data-framer-name="X"]');
+    if (closeBtn) {
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        overlay.style.display = 'none';
       });
     }
   });
 
-  // === HAMBURGER MENU (mobile) ===
-  // Look for menu toggle elements
-  const menuButtons = document.querySelectorAll('[data-framer-name="Menu"]');
-  menuButtons.forEach(btn => {
+
+  // =====================
+  // 4. HAMBURGER MENU (MOBILE)
+  // =====================
+  const menuBtns = document.querySelectorAll('[data-framer-name="Menu"]');
+  menuBtns.forEach(btn => {
     btn.style.cursor = 'pointer';
     btn.addEventListener('click', () => {
-      // Find the mobile nav - usually an overlay or hidden nav section
-      const overlay = document.getElementById('overlay');
-      if (overlay) {
-        const isVisible = overlay.style.display !== 'none' && overlay.style.opacity !== '0';
-        overlay.style.display = isVisible ? 'none' : 'flex';
-        overlay.style.opacity = isVisible ? '0' : '1';
+      // Find the nav/menu container - typically a sibling or parent's child
+      const header = btn.closest('header') || btn.closest('nav') || btn.parentElement?.parentElement;
+      if (!header) return;
+
+      // Look for a nav element or a div with links that should toggle
+      const navLinks = header.querySelector('nav') || header.querySelector('[data-framer-name="Services"]')?.parentElement;
+      if (navLinks) {
+        const isHidden = navLinks.style.display === 'none' || getComputedStyle(navLinks).display === 'none';
+        navLinks.style.display = isHidden ? 'flex' : 'none';
       }
     });
   });
 
-  // === SMOOTH SCROLL for anchor links ===
-  document.querySelectorAll('a[href^="#"]').forEach(link => {
-    link.addEventListener('click', e => {
-      const target = document.querySelector(link.getAttribute('href'));
+
+  // =====================
+  // 5. SMOOTH SCROLL
+  // =====================
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'));
       if (target) {
         e.preventDefault();
         target.scrollIntoView({ behavior: 'smooth' });
       }
     });
-  });
-
-  // === NAV LINKS: fix internal navigation ===
-  // Convert framer page links to anchor scrolls
-  document.querySelectorAll('a[href^="./"]').forEach(link => {
-    const href = link.getAttribute('href');
-    // Map framer page links to section IDs
-    if (href === './' || href === './index.html') {
-      link.setAttribute('href', '#');
-    }
-  });
-
-  // === CTA BUTTONS: scroll to signup form ===
-  document.querySelectorAll('a').forEach(link => {
-    const text = link.textContent?.trim().toLowerCase();
-    if (text?.includes('get two free weeks') || text?.includes('start free trial') || text?.includes('free trial')) {
-      link.addEventListener('click', e => {
-        const signup = document.getElementById('sign-up') || document.querySelector('[data-framer-name="Sign up"]');
-        if (signup) {
-          e.preventDefault();
-          signup.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
-    }
   });
 
 });
